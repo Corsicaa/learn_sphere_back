@@ -40,9 +40,40 @@ const createUser = async (req, res) => {
     }
 };
 
+const loginUser = async (req, res) => {
+    try {
+        const { email, password } = req.body;
+
+        if (email === '' || password === '') {
+            return res.status(400).send({ message: "All fields are required." });
+        }
+
+        const [rows] = await pool.execute('SELECT * FROM users WHERE mail = ?', [email]);
+
+        if (rows.length === 0) {
+            return res.status(401).send({ message: "Invalid email or password." });
+        }
+
+        const user = rows[0];
+
+        const passwordMatch = await bcrypt.compare(password, user.password);
+
+        if (!passwordMatch) {
+            return res.status(401).send({ message: "Invalid email or password." });
+        }
+
+        res.status(200).send({ message: "Login successful.", userId: user.id });
+
+    } catch (error) {
+        console.error('Error logging in user: ', error);
+        res.status(500).send({ message: "Error logging in user." });
+    }
+}
+
 
 
 
 module.exports = {
     createUser,
+    loginUser,
 }
