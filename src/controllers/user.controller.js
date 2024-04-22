@@ -6,6 +6,10 @@ const createUser = async (req, res) => {
     try {
         const { gender, lastname, firstname, email, password, confirmPassword, phone, country } = req.body;
 
+        if (gender === '' || lastname === '' || firstname === '' || email === '' || password === '' || confirmPassword === '' || phone === '' || country === '') {
+            return res.status(400).send({ message: "All fields are required." });
+        }
+
         const [rows] = await pool.execute('SELECT * FROM users WHERE mail = ?', [email]);
 
         if (rows.length > 0) {
