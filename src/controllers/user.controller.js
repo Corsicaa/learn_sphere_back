@@ -1,6 +1,7 @@
 const mysql = require('mysql2');
 const bcrypt = require('bcrypt');
 const pool = require('../db');
+const jwt = require('jsonwebtoken');
 
 const createUser = async (req, res) => {
     try {
@@ -32,6 +33,11 @@ const createUser = async (req, res) => {
             [gender, lastname, firstname, email, hashedPassword, phone, country]
         );
 
+        const userId = result[0].insertId;
+        const token = jwt.sign({ userId: userId }, process.env.SECRET_JWT, { expiresIn: '24h' });
+
+        res.cookie('token', token, { httpOnly: true, secure: true, maxAge: 86400000 });
+
         res.status(201).send({ message: "User created successfully.", userId: result[0].insertId });
 
     } catch (error) {
@@ -62,11 +68,54 @@ const loginUser = async (req, res) => {
             return res.status(401).send({ message: "Invalid email or password." });
         }
 
+        const token = jwt.sign({ userId: user.id }, process.env.SECRET_JWT, { expiresIn: '24h' });
+
+        res.cookie('token', token, { httpOnly: true, secure: true, maxAge: 86400000 });
+
         res.status(200).send({ message: "Login successful.", userId: user.id });
 
     } catch (error) {
         console.error('Error logging in user: ', error);
         res.status(500).send({ message: "Error logging in user." });
+    }
+}
+
+const logoutUser = async (req, res) => {
+    try {
+        res.clearCookie('token');
+        res.status(200).send({ message: "Logout successful." });
+    } catch (error) {
+        console.error('Error logging out user: ', error);
+        res.status(500).send({ message: "Error logging out user." });
+    }
+}
+
+const userConnected = async (req, res) => {
+    try {
+        const token = req.cookies.token;
+        if (!token) {
+          return res.json({ isAuthenticated: false });
+        }
+        const decoded = jwt.verify(token, process.env.SECRET_JWT);
+        return res.json({ isAuthenticated: true, userId: decoded.userId});
+      } catch (error) {
+        return res.json({ isAuthenticated: false });
+      }
+}
+
+const selectUser = async (req, res) => {
+    try {
+        const [rows] = await pool.execute('SELECT * FROM users WHERE id = ?', [req.params.id]);
+
+        if (rows.length === 0) {
+            return res.status(404).send({ message: "User not found." });
+        }
+
+        res.status(200).send(rows[0]);
+
+    } catch (error) {
+        console.error('Error selecting user: ', error);
+        res.status(500).send({ message: "Error selecting user." });
     }
 }
 
@@ -76,4 +125,7 @@ const loginUser = async (req, res) => {
 module.exports = {
     createUser,
     loginUser,
+    logoutUser,
+    selectUser,
+    userConnected
 }

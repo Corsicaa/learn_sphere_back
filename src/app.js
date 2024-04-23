@@ -3,13 +3,18 @@ const cors = require('cors');
 const config = require("./config");
 const routes = require("./routes");
 const pool = require("./db");
+const cookieParser = require('cookie-parser');
 
 const app = express();
 
 
 app.use(express.urlencoded({ extended: true }));
-app.use(cors());
+app.use(cors({
+  origin: config.frontend_url,
+  credentials: true
+}));
 app.use(express.json());
+app.use(cookieParser());
 
 app.get("/", (req, res) => {
   res.send({ message: "Welcome to learsphere application." });
