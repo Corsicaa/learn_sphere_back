@@ -37,9 +37,8 @@ const createUser = async (req, res) => {
         const userId = result[0].insertId;
         const token = generateToken({userId: userId});
 
-        res.cookie('token', token, { httpOnly: true, secure: true, maxAge: 86400000 });
 
-        res.status(201).send({ message: "User created successfully.", userId: result[0].insertId });
+        res.status(201).send({ token, userId: result[0].insertId });
 
     } catch (error) {
         console.error('Error creating new user: ', error);
@@ -71,9 +70,7 @@ const loginUser = async (req, res) => {
 
         const token = generateToken({userId: user.id});
 
-        res.cookie('token', token, { httpOnly: true, secure: true, maxAge: 86400000 });
-
-        res.status(200).send({ message: "Login successful.", userId: user.id });
+        res.status(200).send({ token, userId: user.id });
 
     } catch (error) {
         console.error('Error logging in user: ', error);
