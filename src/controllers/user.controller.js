@@ -1,7 +1,8 @@
-const mysql = require('mysql2');
-const bcrypt = require('bcrypt');
 const pool = require('../db');
 const jwt = require('jsonwebtoken');
+const cryptPassword = require('../helpers/cryptPassword');
+const generateToken = require('../helpers/generateToken');
+const bcrypt = require('bcrypt');
 
 const createUser = async (req, res) => {
     try {
@@ -26,7 +27,7 @@ const createUser = async (req, res) => {
             return res.status(400).send({ message: "Passwords do not match." });
         }
 
-        const hashedPassword = await bcrypt.hash(password, 10);
+        const hashedPassword = await cryptPassword(password);
 
         const result = await pool.execute(
             'INSERT INTO users (gender, lastname, firstname, mail, password, phone, basic, standard, isadmin, country) VALUES (?, ?, ?, ?, ?, ?, true, false, false, ?)',
@@ -34,7 +35,7 @@ const createUser = async (req, res) => {
         );
 
         const userId = result[0].insertId;
-        const token = jwt.sign({ userId: userId }, process.env.SECRET_JWT, { expiresIn: '24h' });
+        const token = generateToken({userId: userId});
 
         res.cookie('token', token, { httpOnly: true, secure: true, maxAge: 86400000 });
 
@@ -68,7 +69,7 @@ const loginUser = async (req, res) => {
             return res.status(401).send({ message: "Invalid email or password." });
         }
 
-        const token = jwt.sign({ userId: user.id }, process.env.SECRET_JWT, { expiresIn: '24h' });
+        const token = generateToken({userId: user.id});
 
         res.cookie('token', token, { httpOnly: true, secure: true, maxAge: 86400000 });
 
@@ -96,12 +97,19 @@ const userConnected = async (req, res) => {
         if (!token) {
           return res.json({ isAuthenticated: false });
         }
-        const decoded = jwt.verify(token, process.env.SECRET_JWT);
-        return res.json({ isAuthenticated: true, userId: decoded.userId});
+        jwt.verify(token, process.env.SECRET_JWT, (err, decoded) => {
+          if (err) {
+            return res.json({ isAuthenticated: false });
+          }
+          if (decoded && decoded.userId) {
+            return res.json({ isAuthenticated: true });
+          }
+          return res.json({ isAuthenticated: false });
+        });
       } catch (error) {
         return res.json({ isAuthenticated: false });
       }
-}
+  }
 
 const selectUser = async (req, res) => {
     try {
