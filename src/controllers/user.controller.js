@@ -37,7 +37,6 @@ const createUser = async (req, res) => {
         const userId = result[0].insertId;
         const token = generateToken({userId: userId});
 
-
         res.status(201).send({ token, userId: result[0].insertId });
 
     } catch (error) {
